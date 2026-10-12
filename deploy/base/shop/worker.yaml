@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-worker
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: orders-worker
+    app.kubernetes.io/part-of: orders
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orders-worker
+        app.kubernetes.io/part-of: orders
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: worker
+          image: orders-app
+          command: ["python", "-m", "orders.worker"]
+          envFrom:
+            - configMapRef:
+                name: orders-config
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-auth
+                  key: redis-password
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true

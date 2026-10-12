@@ -1,0 +1,139 @@
+name: Release
+
+# Релиз = git-тег вида v1.2.3:
+#   git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-lab
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & push image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image metadata
+        id: meta
+        run: |
+          # GHCR принимает только lowercase
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: app
+          push: true
+          build-args: APP_VERSION=${{ github.ref_name }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.meta.outputs.image }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to lab cluster
+    needs: build
+    # self-hosted runner на сервере с кластером — задай repo variable DEPLOY_RUNNER=self-hosted
+    runs-on: ${{ vars.DEPLOY_RUNNER || 'ubuntu-latest' }}
+    environment:
+      name: lab
+    env:
+      KUSTOMIZE_VERSION: "5.4.3"
+      IMAGE: ${{ needs.build.outputs.image }}
+      VERSION: ${{ github.ref_name }}
+      ROLLOUT_TIMEOUT: 120s
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.4
+
+      - name: Install kustomize
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar xz -C "$RUNNER_TEMP/bin" kustomize
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "::error::Secret KUBECONFIG_B64 is not set in environment 'lab'"; exit 1
+          fi
+          echo "$KUBECONFIG_B64" | base64 -d > "$RUNNER_TEMP/kubeconfig"
+          chmod 600 "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+
+      - name: Render manifests
+        working-directory: deploy/overlays/lab
+        run: |
+          kustomize edit set image "orders-app=${IMAGE}:${VERSION}"
+          kustomize build . > "$RUNNER_TEMP/rendered.yaml"
+          grep -n "image:" "$RUNNER_TEMP/rendered.yaml"
+
+      - name: Apply
+        run: kubectl apply -f "$RUNNER_TEMP/rendered.yaml"
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n data rollout status deploy/redis         --timeout="$ROLLOUT_TIMEOUT"
+          kubectl -n shop rollout status deploy/orders-api    --timeout="$ROLLOUT_TIMEOUT"
+          kubectl -n shop rollout status deploy/orders-worker --timeout="$ROLLOUT_TIMEOUT"
+
+      - name: Smoke test
+        run: ./scripts/smoke.sh
+
+      - name: Snapshot on failure
+        if: failure()
+        run: |
+          for ns in data shop; do
+            echo "::group::$ns: pods"
+            kubectl -n "$ns" get pods -o wide || true
+            echo "::endgroup::"
+            echo "::group::$ns: recent events"
+            kubectl -n "$ns" get events --sort-by=.lastTimestamp | tail -n 25 || true
+            echo "::endgroup::"
+          done
+          echo "Дальше — сам: kubectl describe / logs / get -o yaml. Удачи!"
+
+  release:
+    name: GitHub Release
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists (re-run), skipping"; exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "Задеплоено в lab: ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_REF_NAME}"

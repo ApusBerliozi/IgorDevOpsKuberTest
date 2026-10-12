@@ -1,0 +1,62 @@
+# Применяется один раз админом кластера:
+#   kubectl apply -f cluster/bootstrap.yaml
+# Создаёт namespace'ы и сервисный аккаунт для GitHub Actions с правами `edit`
+# только в shop и data.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ci
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gha-deployer
+  namespace: ci
+---
+# Долгоживущий токен — допустимо для учебного стенда.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gha-deployer-token
+  namespace: ci
+  annotations:
+    kubernetes.io/service-account.name: gha-deployer
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gha-deployer-edit
+  namespace: shop
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: gha-deployer
+    namespace: ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gha-deployer-edit
+  namespace: data
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: gha-deployer
+    namespace: ci

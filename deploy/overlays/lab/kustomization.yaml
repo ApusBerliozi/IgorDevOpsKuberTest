@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# newName/newTag перезаписываются в release workflow через `kustomize edit set image`.
+images:
+  - name: orders-app
+    newName: ghcr.io/example/k8s-debug-lab
+    newTag: latest

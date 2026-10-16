@@ -27,6 +27,9 @@ spec:
         app.kubernetes.io/name: redis
         app.kubernetes.io/part-of: orders
     spec:
+      # Redis хотим держать на ноде с быстрым диском.
+      nodeSelector:
+        disktype: ssd
       containers:
         - name: redis
           image: redis:7.4-alpine

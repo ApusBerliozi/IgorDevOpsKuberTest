@@ -31,7 +31,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: redis-auth
-                  key: redis-password
+                  key: REDIS_PASSWORD
           readinessProbe:
             httpGet:
               path: /healthz

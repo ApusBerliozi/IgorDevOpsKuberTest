@@ -30,7 +30,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: redis-auth
-                  key: redis-password
+                  key: REDIS_PASSWORD
           resources:
             requests:
               cpu: 50m

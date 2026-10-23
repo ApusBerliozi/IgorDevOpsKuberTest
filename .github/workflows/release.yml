@@ -22,6 +22,7 @@ jobs:
       packages: write
     outputs:
       image: ${{ steps.meta.outputs.image }}
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +31,8 @@ jobs:
         run: |
           # GHCR принимает только lowercase
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          # семвер без префикса v — для APP_VERSION и манифестов
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -42,7 +45,7 @@ jobs:
         with:
           context: app
           push: true
-          build-args: APP_VERSION=${{ github.ref_name }}
+          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
           tags: |
             ${{ steps.meta.outputs.image }}:${{ github.ref_name }}
             ${{ steps.meta.outputs.image }}:sha-${{ github.sha }}
@@ -59,7 +62,7 @@ jobs:
     env:
       KUSTOMIZE_VERSION: "5.4.3"
       IMAGE: ${{ needs.build.outputs.image }}
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ needs.build.outputs.version }}
       ROLLOUT_TIMEOUT: 120s
     steps:
       - uses: actions/checkout@v4

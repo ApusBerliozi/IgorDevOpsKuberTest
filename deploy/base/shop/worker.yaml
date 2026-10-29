@@ -12,7 +12,6 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: orders-worker
-      app.kubernetes.io/component: worker
   template:
     metadata:
       labels:

@@ -17,7 +17,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: shop
+              kubernetes.io/metadata.name: shop
       ports:
         - protocol: TCP
           port: 6379

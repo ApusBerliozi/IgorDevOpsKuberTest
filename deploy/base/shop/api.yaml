@@ -6,6 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: orders-api
     app.kubernetes.io/part-of: orders
+    app.kubernetes.io/component: api
 spec:
   replicas: 2
   strategy:

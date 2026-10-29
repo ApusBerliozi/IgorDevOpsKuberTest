@@ -33,7 +33,7 @@ spec:
       containers:
         - name: redis
           image: redis:7.4-alpine
-          args: ["--requirepass", "$(REDIS_PASS)", "--appendonly", "no"]
+          args: ["--requirepass", "$(REDIS_PASSWORD)", "--appendonly", "no"]
           env:
             - name: REDIS_PASSWORD
               valueFrom:

@@ -102,9 +102,9 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          kubectl -n data rollout status deploy/redis         --timeout="$ROLLOUT_TIMEOUT"
-          kubectl -n shop rollout status deploy/orders-api    --timeout="$ROLLOUT_TIMEOUT"
-          kubectl -n shop rollout status deploy/orders-worker --timeout="$ROLLOUT_TIMEOUT"
+          kubectl -n data rollout status deploy/redis         --timeout="$ROLLOUT_TIMEOUTs"
+          kubectl -n shop rollout status deploy/orders-api    --timeout="$ROLLOUT_TIMEOUTs"
+          kubectl -n shop rollout status deploy/orders-worker --timeout="$ROLLOUT_TIMEOUTs"
 
       - name: Smoke test
         run: ./scripts/smoke.sh

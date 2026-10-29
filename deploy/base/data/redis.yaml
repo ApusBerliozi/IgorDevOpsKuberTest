@@ -56,6 +56,9 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
           volumeMounts:
             - name: data
               mountPath: /data

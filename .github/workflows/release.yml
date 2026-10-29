@@ -48,6 +48,7 @@ jobs:
           build-args: APP_VERSION=${{ steps.meta.outputs.version }}
           tags: |
             ${{ steps.meta.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
             ${{ steps.meta.outputs.image }}:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -63,7 +64,7 @@ jobs:
       KUSTOMIZE_VERSION: "5.4.3"
       IMAGE: ${{ needs.build.outputs.image }}
       VERSION: ${{ needs.build.outputs.version }}
-      ROLLOUT_TIMEOUT: 120s
+      ROLLOUT_TIMEOUT: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -126,7 +127,7 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Create release

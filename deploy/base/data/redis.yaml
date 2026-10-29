@@ -29,11 +29,11 @@ spec:
     spec:
       # Redis хотим держать на ноде с быстрым диском.
       nodeSelector:
-        disktype: ssd
+        disk: ssd
       containers:
         - name: redis
           image: redis:7.4-alpine
-          args: ["--requirepass", "$(REDIS_PASSWORD)", "--appendonly", "no"]
+          args: ["--requirepass", "$(REDIS_PASS)", "--appendonly", "no"]
           env:
             - name: REDIS_PASSWORD
               valueFrom:
@@ -53,6 +53,9 @@ spec:
               memory: 64Mi
             limits:
               memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           volumeMounts:
             - name: data
               mountPath: /data

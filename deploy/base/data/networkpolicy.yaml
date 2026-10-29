@@ -1,0 +1,23 @@
+# Redis доступен только сервисам из namespace shop.
+# Всё остальное входящее в Redis запрещено.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-allow-shop
+  namespace: data
+  labels:
+    app.kubernetes.io/part-of: orders
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: shop
+      ports:
+        - protocol: TCP
+          port: 6379

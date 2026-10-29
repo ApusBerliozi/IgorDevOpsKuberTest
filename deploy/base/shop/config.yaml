@@ -4,7 +4,7 @@ metadata:
   name: orders-config
   namespace: shop
 data:
-  REDIS_HOST: "redis"
+  REDIS_HOST: "redis.data.svc.cluster.local"
   REDIS_PORT: "6379"
   LOG_LEVEL: "INFO"
   # Сколько товаров воркер держит в памяти. Бизнес просит не уменьшать.

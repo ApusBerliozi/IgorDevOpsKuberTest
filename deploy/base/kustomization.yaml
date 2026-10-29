@@ -5,6 +5,7 @@ kind: Kustomization
 # у CI-аккаунта нет прав на cluster-scoped ресурсы.
 resources:
   - data/redis.yaml
+  - data/networkpolicy.yaml
   - shop/config.yaml
   - shop/api.yaml
   - shop/worker.yaml

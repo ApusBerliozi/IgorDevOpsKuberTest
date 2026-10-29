@@ -17,6 +17,14 @@ spec:
         app.kubernetes.io/name: orders-api
         app.kubernetes.io/part-of: orders
     spec:
+      # HA: реплики API не должны жить в одной зоне.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: orders-api
+              topologyKey: zone
       containers:
         - name: api
           image: orders-app   # реальное имя и тег подставляет kustomize в release workflow
@@ -31,11 +39,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: redis-auth
-                  key: REDIS_PASSWORD
+                  key: redis-password
           readinessProbe:
             httpGet:
               path: /healthz
-              port: 8080
+              port: http
             periodSeconds: 5
             failureThreshold: 3
           livenessProbe:
@@ -49,7 +57,7 @@ spec:
               cpu: 50m
               memory: 96Mi
             limits:
-              memory: 256Mi
+              memory: 256m
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -65,6 +73,7 @@ metadata:
 spec:
   selector:
     app.kubernetes.io/name: orders-api
+    app.kubernetes.io/component: api
   ports:
     - name: http
       port: 80
